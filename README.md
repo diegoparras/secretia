@@ -143,3 +143,15 @@ Secretia es una **distribución** que combina software de terceros, con branding
 Sus marcas y licencias pertenecen a sus autores. Consultá los repos de origen
 para los términos de uso. El branding y el empaquetado "Secretia" son parte de la
 familia Escriba.
+
+---
+
+## Licencia
+
+El **empaquetado y branding de Secretia** (este repo: compose, nginx, CSS, logos,
+documentación) se publica bajo licencia **MIT** — ver [LICENSE](LICENSE).
+
+Esto cubre **solo** lo propio de este repo. **Open WebUI** y **Ollama** se
+distribuyen como sus imágenes oficiales y conservan **sus propias licencias**;
+no los redistribuimos ni los modificamos (los orquestamos vía Docker). Si pensás
+desplegar a gran escala, revisá los términos de marca de Open WebUI en su repo.
