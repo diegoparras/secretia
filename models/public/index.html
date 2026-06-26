@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Secretia · Modelos</title>
+  <link rel="icon" href="logo.svg" />
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="escriba-ui.css" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+
+  <!-- ===== Login ===== -->
+  <div id="login" class="login-overlay hidden">
+    <form id="login-card" class="login-card" autocomplete="off">
+      <img class="logo" src="logo.svg" alt="Secretia" />
+      <h2>Secretia</h2>
+      <p class="login-sub">Modelos — descargá modelos de Ollama</p>
+
+      <!-- local -->
+      <div id="login-local">
+        <div class="pass-wrap">
+          <input id="pass" type="password" placeholder="Contraseña" autocomplete="current-password" />
+          <button type="button" class="pass-toggle" id="pass-toggle" aria-label="Mostrar contraseña">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <button type="submit" id="login-btn" style="margin-top:10px;width:100%">Entrar</button>
+      </div>
+
+      <!-- federado -->
+      <a id="login-sso" class="login-sso hidden" href="login/lockatus">Entrar con Lockatus</a>
+
+      <div class="login-err" id="login-err"></div>
+      <p class="login-foot">Roles: <b>dios</b> descarga y borra · <b>humano</b> solo mira.</p>
+    </form>
+  </div>
+
+  <!-- ===== Chrome ===== -->
+  <header class="app-header">
+    <a class="logo-link" href="../">
+      <img class="logo brand" src="logo.svg" alt="Secretia" />
+      <h1>Secretia <span class="h-sub">Modelos</span></h1>
+    </a>
+    <span class="sp"></span>
+    <div class="menu-wrap">
+      <button class="icon-btn" id="kebab" aria-label="Menú" aria-haspopup="true" aria-expanded="false">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="4" r="1.7"/><circle cx="10" cy="10" r="1.7"/><circle cx="10" cy="16" r="1.7"/></svg>
+      </button>
+      <div class="menu menu-right hidden" id="menu" role="menu">
+        <div class="menu-user" id="menu-user">—</div>
+        <div class="menu-sep"></div>
+        <label class="menu-item menu-switch" for="theme-switch">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+          Tema oscuro
+          <input type="checkbox" id="theme-switch" /><span class="track"></span>
+        </label>
+        <a class="menu-item" href="../" role="menuitem">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>
+          Volver al chat
+        </a>
+        <button class="menu-item" id="about-open" role="menuitem">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          Acerca de Modelos
+        </button>
+        <div class="menu-sep"></div>
+        <button class="menu-item" id="logout" role="menuitem">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== App ===== -->
+  <main id="app" class="wrap hidden">
+    <div class="hero">
+      <h1>Modelos</h1>
+      <p class="sub">Descargá modelos para tu Ollama. Una vez bajados, aparecen solos en el chat de Secretia.</p>
+    </div>
+
+    <div id="ollama-down" class="note-bad hidden">No se puede contactar a Ollama. Revisá que el servicio esté arriba y <code>OLLAMA_BASE_URL</code>.</div>
+
+    <div class="filters" id="filters"></div>
+
+    <div class="cat-grid" id="grid"></div>
+
+    <!-- Descargar por tag (solo dios) -->
+    <div class="pull-any hidden" id="pull-any">
+      <div class="pa-lbl">¿Otro modelo? Pegá su tag de <a class="link" href="https://ollama.com/library" target="_blank" rel="noopener">ollama.com/library</a></div>
+      <div class="pa-row">
+        <input id="pa-input" placeholder="ej. llama3.3:70b" />
+        <button id="pa-btn">Descargar</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== Acerca de ===== -->
+  <div class="modal-back hidden" id="about">
+    <div class="modal-card">
+      <button class="modal-x" id="about-x" aria-label="Cerrar">✕</button>
+      <h3 class="modal-tit">Secretia · Modelos</h3>
+      <div class="modal-cuerpo">
+        <p>Interfaz para descargar y gestionar los modelos de Ollama de tu Secretia, con el diseño de la familia Escriba.</p>
+        <dl class="about-rows">
+          <dt>Versión</dt><dd id="about-ver">—</dd>
+          <dt>Rol en la suite</dt><dd>IA local · gestor de modelos</dd>
+          <dt>Acceso</dt><dd id="about-auth">—</dd>
+          <dt>Repo</dt><dd><a class="link" href="https://github.com/diegoparras/secretia" target="_blank" rel="noopener">github.com/diegoparras/secretia</a></dd>
+        </dl>
+        <p class="about-foot">Diego Parras · Ecosistema Escriba</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

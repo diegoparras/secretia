@@ -19,21 +19,26 @@
 ## Arquitectura
 
 ```
-                 ┌────────────────────────────────────────────┐
-   Internet ───► │  web (nginx)  :8080  ← dominio público      │
-                 │   • branding Escriba (logo, acento, fuente) │
-                 │   • inyecta /secretia/secretia.css          │
-                 └───────────────┬────────────────────────────┘
-                                 │ proxy
-                 ┌───────────────▼──────────┐     ┌─────────────────────┐
-                 │  open-webui  :8080        │────►│  ollama  :11434      │
-                 │   • chat, usuarios, OIDC  │     │   • modelos locales  │
-                 │   • login con Lockatus    │     │   • salida a internet│
-                 └───────────────────────────┘     │     para `pull`      │
-                                                    └─────────────────────┘
+                 ┌──────────────────────────────────────────────────┐
+   Internet ───► │  web (nginx)  :8080  ← dominio público            │
+                 │   • branding Escriba · inyecta secretia.css       │
+                 │   • /         → chat   · /modelos → descargador    │
+                 └──────┬──────────────────────────┬─────────────────┘
+                 proxy /│                proxy /modelos│
+          ┌─────────────▼──────────┐      ┌──────────▼───────────────┐
+          │  open-webui  :8080      │      │  models  :8090            │
+          │   • chat, OIDC          │      │   • catálogo + descarga   │
+          │   • login Lockatus      │      │   • roles dios/humano     │
+          └─────────────┬──────────┘      └──────────┬───────────────┘
+                        │  http://ollama:11434        │
+                        └─────────────┬───────────────┘
+                            ┌─────────▼──────────┐
+                            │  ollama  :11434     │
+                            │   • modelos locales │
+                            └─────────────────────┘
 ```
 
-- **Solo `web` es público.** `open-webui` y `ollama` quedan internos (sin puertos publicados).
+- **Solo `web` es público.** `open-webui`, `models` y `ollama` quedan internos (sin puertos publicados).
 - Otras apps de la Suite pueden usar el mismo Ollama apuntando a `http://ollama:11434`
   **si están en el mismo proyecto de EasyPanel**.
 
@@ -57,12 +62,13 @@
 
 ---
 
-## Deploy SIN Compose — 3 servicios separados (recomendado en EasyPanel)
+## Deploy SIN Compose — 4 servicios separados (recomendado en EasyPanel)
 
 > **Guía operativa con checklist y troubleshooting: [DEPLOY.md](DEPLOY.md).**
 
 EasyPanel se lleva mejor con servicios sueltos que con un Compose. Creá un
-**proyecto** (p.ej. `secretia`) y dentro **3 servicios**:
+**proyecto** (p.ej. `secretia`) y dentro **4 servicios** (el de Modelos es opcional
+pero recomendado):
 
 ### 1) `ollama` — motor de modelos (interno)
 - **App → desde imagen:** `ollama/ollama:latest`
@@ -89,17 +95,31 @@ EasyPanel se lleva mejor con servicios sueltos que con un Compose. Creá un
   ```
 - **Sin dominio** (lo expone el servicio de branding).
 
-### 3) `secretia` — branding (público)
+### 3) `models` — página de descarga de modelos (interno)
+- **App → Source = este repo**, **Build = Dockerfile**, **build context = `models/`**.
+- **Variables de entorno:**
+  ```
+  OLLAMA_BASE_URL=http://ollama:11434
+  MODELS_SESSION_SECRET=<openssl rand -hex 32>
+  # Acceso local por contraseña (rol). Dejalas vacías si federás con Lockatus.
+  DIOS_PASSWORD=<clave para descargar/borrar>
+  HUMANO_PASSWORD=<clave para solo mirar>
+  # — o — federación con Lockatus (ver sección siguiente):
+  # MODELS_LOCKATUS_ISSUER=https://lockatus.go.websiteonline.org
+  # MODELS_PUBLIC_URL=https://TU-DOMINIO/modelos
+  ```
+- **Sin dominio** (lo expone `secretia` en `/modelos`).
+
+### 4) `secretia` — branding + ruteo (público)
 - **App → Source = este repo de GitHub** (`diegoparras/secretia`), **Build = Dockerfile**.
-  (Construye una `nginx` que proxya a Open WebUI e inyecta el CSS de acento.)
-- **Variable de entorno:** `OPEN_WEBUI_UPSTREAM=open-webui:8080`
-  (apunta al servicio del paso 2; si el hostname interno difiere, usá el que
-  muestre EasyPanel).
+  (Construye una `nginx` que proxya a Open WebUI, inyecta el CSS de acento y enruta `/modelos`.)
+- **Variables de entorno:** `OPEN_WEBUI_UPSTREAM=open-webui:8080` y `MODELS_UPSTREAM=models:8090`
+  (apuntan a los servicios 2 y 3; si el hostname interno difiere, usá el que muestre EasyPanel).
 - **Dominio:** asigná tu dominio público → puerto **`8080`**.
 
-> Los hostnames internos (`ollama`, `open-webui`) funcionan si nombrás los
+> Los hostnames internos (`ollama`, `open-webui`, `models`) funcionan si nombrás los
 > servicios así dentro del MISMO proyecto. Si EasyPanel usa otro hostname interno,
-> ajustá `OLLAMA_BASE_URL` y `OPEN_WEBUI_UPSTREAM` con el que figure en cada servicio.
+> ajustá `OLLAMA_BASE_URL`, `OPEN_WEBUI_UPSTREAM` y `MODELS_UPSTREAM`.
 
 **¿Querés lo más simple posible?** Salteá el servicio 3 y ponéle el dominio
 directo a `open-webui` (puerto 8080). Perdés el acento CSS, pero te queda el
@@ -134,9 +154,27 @@ Open WebUI trae OIDC nativo. Para que el login pase por Lockatus:
 
 ---
 
-## Modelos de Ollama
+## Descargar modelos
 
-Entrá a la terminal del servicio `ollama` (en EasyPanel → servicio `ollama` → Terminal) y:
+Tres formas, las dos primeras desde la web (sin terminal):
+
+### 1) Página "Modelos" de Secretia (estilo LM Studio) — servicio `models`
+Entrá a **`https://TU-DOMINIO/modelos`**: un catálogo curado (chat, razonamiento,
+código, visión, embeddings) con tamaños y un botón **Descargar** con barra de
+progreso, más "instalado/no instalado" y borrado. Acceso por **rol**:
+
+- **dios** → descarga y borra modelos.
+- **humano** → solo mira.
+
+El acceso es por **contraseña local** (`DIOS_PASSWORD` / `HUMANO_PASSWORD`) o
+**federado con Lockatus** (registrá `secretia-modelos`; ver abajo). ¿Otro modelo?
+Pegá cualquier tag de [ollama.com/library](https://ollama.com/library).
+
+### 2) Open WebUI (lo que ya trae el chat)
+En el chat: avatar → **Admin Settings → Models → "Pull a model from Ollama.com"**.
+
+### 3) Por terminal (opcional)
+EasyPanel → servicio `ollama` → Terminal:
 
 ```bash
 ollama pull llama3.1:8b        # chat general, liviano

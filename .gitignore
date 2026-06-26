@@ -3,6 +3,10 @@
 *.env
 !.env.example
 
+# Dependencias (se instalan en el build)
+node_modules/
+models/node_modules/
+
 # Datos locales de prueba
 data/
 *.log

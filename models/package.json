@@ -1,0 +1,14 @@
+{
+  "name": "secretia-models",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Secretia — catálogo y descargador de modelos de Ollama (UI Escriba, roles dios/humano, federable con Lockatus).",
+  "license": "MIT",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "jose": "^5.9.6"
+  }
+}

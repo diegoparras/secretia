@@ -53,17 +53,39 @@ services:
     volumes:
       - open-webui:/app/backend/data
 
+  # ── Página de Modelos (interno; lo expone `web` en /modelos) ─────────────
+  # Catálogo + descargador de modelos de Ollama, UI Escriba, roles dios/humano,
+  # federable con Lockatus. Solo el rol dios descarga/borra.
+  models:
+    build: ./models
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - MODELS_SESSION_SECRET=${MODELS_SESSION_SECRET}
+      - DIOS_PASSWORD=${DIOS_PASSWORD:-}
+      - HUMANO_PASSWORD=${HUMANO_PASSWORD:-}
+      - COOKIE_SECURE=${COOKIE_SECURE:-true}
+      # Federación opcional con Lockatus (si está, oculta el login local)
+      - LOCKATUS_ISSUER=${MODELS_LOCKATUS_ISSUER:-}
+      - LOCKATUS_CLIENT_ID=${MODELS_LOCKATUS_CLIENT_ID:-secretia-modelos}
+      - MODELS_PUBLIC_URL=${MODELS_PUBLIC_URL:-}
+      - MODELS_ALLOW_LOCAL_LOGIN=${MODELS_ALLOW_LOCAL_LOGIN:-false}
+
   # ── Capa pública: nginx con branding Escriba ─────────────────────────────
   web:
     image: nginx:alpine
     restart: unless-stopped
     depends_on:
       - open-webui
+      - models
     ports:
       - "8080:8080"           # ← mapeá tu dominio público a este puerto
     environment:
       - OPEN_WEBUI_UPSTREAM=open-webui:8080
-      - NGINX_ENVSUBST_FILTER=OPEN_WEBUI_UPSTREAM
+      - MODELS_UPSTREAM=models:8090
+      - NGINX_ENVSUBST_FILTER=(OPEN_WEBUI_UPSTREAM|MODELS_UPSTREAM)
     volumes:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ./web:/usr/share/nginx/secretia:ro

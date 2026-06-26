@@ -6,8 +6,10 @@ FROM nginx:alpine
 # A dónde proxyear Open WebUI (host:puerto internos en EasyPanel).
 # Sobrescribilo con la variable de entorno del servicio si tu host es otro.
 ENV OPEN_WEBUI_UPSTREAM=open-webui:8080
-# Sustituí SOLO esa variable en la plantilla (no toca las $vars de nginx).
-ENV NGINX_ENVSUBST_FILTER=OPEN_WEBUI_UPSTREAM
+# A dónde enrutar la página de Modelos (servicio Node interno).
+ENV MODELS_UPSTREAM=models:8090
+# Sustituí SOLO estas variables en la plantilla (no toca las $vars de nginx).
+ENV NGINX_ENVSUBST_FILTER=(OPEN_WEBUI_UPSTREAM|MODELS_UPSTREAM)
 
 # Plantilla de nginx → la imagen oficial la procesa con envsubst al arrancar.
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template

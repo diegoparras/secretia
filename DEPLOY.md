@@ -97,15 +97,54 @@ Checklist:
 | Tipo | **App** |
 | Source | **GitHub** → `diegoparras/secretia`, rama `main` |
 | Build | **Dockerfile** (EasyPanel lo detecta solo) |
-| Environment | `OPEN_WEBUI_UPSTREAM=open-webui:8080` |
+| Environment | `OPEN_WEBUI_UPSTREAM=open-webui:8080` · `MODELS_UPSTREAM=models:8090` |
 | Dominio | **tu dominio público** → Port **`8080`** |
 
 Checklist:
 - [ ] Servicio nombrado **`secretia`**.
 - [ ] Build = **Dockerfile** (no Nixpacks).
 - [ ] `OPEN_WEBUI_UPSTREAM` apunta al servicio del paso 2 (`open-webui:8080`).
+- [ ] `MODELS_UPSTREAM` apunta al servicio de Modelos (`models:8090`) si lo usás.
 - [ ] Dominio asignado al **puerto 8080**.
 - [ ] Deploy → entrás a `https://TU-DOMINIO` y ves Open WebUI con el acento Secretia.
+
+---
+
+## 3·b) Servicio `models` — descargá modelos desde la web (interno, opcional)
+
+Una página estilo LM Studio en **`/modelos`** para bajar modelos sin terminal, con
+roles **dios** (descarga/borra) y **humano** (solo mira).
+
+| Campo | Valor |
+|---|---|
+| Tipo | **App** |
+| Source | **GitHub** → `diegoparras/secretia`, **build context `models/`** |
+| Build | **Dockerfile** |
+| Dominio | **ninguno** (lo expone `secretia` en `/modelos`) |
+
+**Environment** (acceso local por contraseña):
+```
+OLLAMA_BASE_URL=http://ollama:11434
+MODELS_SESSION_SECRET=<openssl rand -hex 32>
+DIOS_PASSWORD=<clave para descargar/borrar>
+HUMANO_PASSWORD=<clave para solo mirar>
+```
+
+O **federado con Lockatus** (en vez de las contraseñas):
+```
+OLLAMA_BASE_URL=http://ollama:11434
+MODELS_SESSION_SECRET=<openssl rand -hex 32>
+MODELS_LOCKATUS_ISSUER=https://lockatus.go.websiteonline.org
+MODELS_PUBLIC_URL=https://TU-DOMINIO/modelos
+MODELS_LOCKATUS_CLIENT_ID=secretia-modelos
+```
+
+Checklist:
+- [ ] Servicio nombrado **`models`**, build context `models/`.
+- [ ] `MODELS_SESSION_SECRET` largo y secreto.
+- [ ] O bien `DIOS_PASSWORD`/`HUMANO_PASSWORD`, **o bien** los `MODELS_LOCKATUS_*`.
+- [ ] El servicio `secretia` (paso 3) tiene `MODELS_UPSTREAM=models:8090`.
+- [ ] Probá `https://TU-DOMINIO/modelos`.
 
 ---
 
@@ -117,6 +156,11 @@ En el admin de Lockatus → **Apps**:
 - [ ] `redirect_uri` = `https://TU-DOMINIO/oauth/oidc/callback` (idéntica a `OPENID_REDIRECT_URI`).
 - [ ] `client_id` = `secretia`; `client_secret` = el mismo que pusiste en `OAUTH_CLIENT_SECRET`.
 - [ ] Sumar `secretia` a la **matriz de accesos** para los roles que correspondan.
+
+**¿Federaste también la página de Modelos?** Registrá una segunda app:
+- [ ] Alta de app `secretia-modelos`.
+- [ ] `redirect_uri` = `https://TU-DOMINIO/modelos/auth/callback`.
+- [ ] Matriz de accesos: quien tenga rol **dios/god/admin/superadmin** podrá descargar/borrar; el resto solo mira.
 
 ---
 
