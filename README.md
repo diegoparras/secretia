@@ -59,6 +59,8 @@
 
 ## Deploy SIN Compose — 3 servicios separados (recomendado en EasyPanel)
 
+> **Guía operativa con checklist y troubleshooting: [DEPLOY.md](DEPLOY.md).**
+
 EasyPanel se lleva mejor con servicios sueltos que con un Compose. Creá un
 **proyecto** (p.ej. `secretia`) y dentro **3 servicios**:
 
