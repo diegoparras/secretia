@@ -32,9 +32,15 @@ server {
     }
 
     # ── Página de Modelos (servicio Node interno; descarga modelos de Ollama) ──
+    # El servicio `models` es OPCIONAL. Usamos el resolver interno de Docker +
+    # un upstream por variable para que nginx NO falle al arrancar si `models`
+    # no existe: en ese caso /modelos da 502, pero el chat sigue andando.
     location = /modelos { return 301 /modelos/; }
     location /modelos/ {
-        proxy_pass http://${MODELS_UPSTREAM}/;   # la barra final descarta el prefijo /modelos/
+        resolver 127.0.0.11 ipv6=off valid=30s;
+        set $models_upstream ${MODELS_UPSTREAM};
+        rewrite ^/modelos/(.*)$ /$1 break;   # descarta el prefijo /modelos/
+        proxy_pass http://$models_upstream;
         proxy_http_version 1.1;
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
