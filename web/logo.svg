@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Secretia">
+  <rect width="64" height="64" rx="15" fill="#37974e"/>
+  <path fill="#ffffff" d="M16 18h32a4 4 0 0 1 4 4v15a4 4 0 0 1-4 4H29l-9 8v-8h-4a4 4 0 0 1-4-4V22a4 4 0 0 1 4-4z"/>
+  <circle cx="25" cy="29.5" r="2.6" fill="#37974e"/>
+  <circle cx="32" cy="29.5" r="2.6" fill="#37974e"/>
+  <circle cx="39" cy="29.5" r="2.6" fill="#37974e"/>
+</svg>

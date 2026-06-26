@@ -1,0 +1,70 @@
+# Secretia — IA de la familia Escriba
+# Distribución lista para "cocinar": Ollama (motor de modelos) + Open WebUI (front)
+# + una capa nginx que aplica el branding Escriba e inyecta el CSS de acento.
+#
+# IMPORTANTE: Secretia es un FORK/DISTRIBUCIÓN de Open WebUI (https://openwebui.com)
+# con branding Escriba. No reescribimos su UI; la envolvemos. Ver README → "Atribución".
+#
+# Deploy: EasyPanel → tipo "Compose", apuntando a este repo.
+#   - Servicio público: SOLO `web` (puerto 8080). Mapeá tu dominio a ese puerto.
+#   - `ollama` y `open-webui` quedan internos (sin puertos publicados).
+#   - Copiá `.env.example` a `.env` y completá los valores antes de levantar.
+
+name: secretia
+
+services:
+  # ── Motor de modelos (interno) ───────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama:/root/.ollama
+    # Sin `ports`: solo accesible dentro de la red del proyecto.
+    # Necesita salida a internet para `ollama pull <modelo>` (ver README).
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ── Front Open WebUI (interno; lo expone `web`) ──────────────────────────
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_NAME=${WEBUI_NAME:-Secretia}
+      - WEBUI_URL=${WEBUI_URL}
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
+      # Alta local desactivada: el alta entra por Lockatus (OIDC).
+      - ENABLE_SIGNUP=${ENABLE_SIGNUP:-false}
+      # ── Federación con Lockatus (OIDC) ──
+      - ENABLE_OAUTH_SIGNUP=${ENABLE_OAUTH_SIGNUP:-true}
+      - OAUTH_PROVIDER_NAME=${OAUTH_PROVIDER_NAME:-Lockatus}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID:-}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET:-}
+      - OPENID_PROVIDER_URL=${OPENID_PROVIDER_URL:-}
+      - OPENID_REDIRECT_URI=${OPENID_REDIRECT_URI:-}
+      - OAUTH_SCOPES=${OAUTH_SCOPES:-openid email profile}
+      - OAUTH_MERGE_ACCOUNTS_BY_EMAIL=${OAUTH_MERGE_ACCOUNTS_BY_EMAIL:-true}
+    volumes:
+      - open-webui:/app/backend/data
+
+  # ── Capa pública: nginx con branding Escriba ─────────────────────────────
+  web:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - open-webui
+    ports:
+      - "8080:8080"           # ← mapeá tu dominio público a este puerto
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./web:/usr/share/nginx/secretia:ro
+
+volumes:
+  ollama:
+  open-webui:

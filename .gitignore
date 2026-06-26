@@ -1,0 +1,12 @@
+# Secrets / entorno
+.env
+*.env
+!.env.example
+
+# Datos locales de prueba
+data/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
