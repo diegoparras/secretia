@@ -106,7 +106,9 @@ El branding es **nivel marca**, no un re-skin total (Open WebUI es su propia app
 
 - **Nombre:** `WEBUI_NAME=Secretia` (env).
 - **Acento + fuente Inter:** `web/secretia.css`, inyectado por nginx.
-  El acento (`--secretia-accent: #37974e`, **provisional**) se ajusta ahí.
+  El acento (`--secretia-accent: #b23a8c`, magenta/fucsia) se ajusta ahí.
+  Se eligió en función de la familia: es el hueco libre del arco de acentos de
+  marca y no pisa el verde/ámbar/rojo semánticos (`--ok`/`--warn`/`--err`).
 - **Logo / favicon:** `web/logo.svg` y `web/favicon.svg` (servidos en `/secretia/`).
 
 > El CSS es **best-effort**: si una actualización de Open WebUI cambia su HTML,
