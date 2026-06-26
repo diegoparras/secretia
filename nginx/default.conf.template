@@ -31,6 +31,21 @@ server {
         expires 7d;
     }
 
+    # ── Logo de Secretia sobre los assets de Open WebUI ───────────────────────
+    # Servimos nuestro SVG en las rutas que Open WebUI usa para su logo/favicon/
+    # splash. El <img> del front renderiza por content-type (image/svg+xml), así
+    # que el logo "OI" pasa a ser el de Secretia sin tocar el código de OWUI.
+    location = /favicon.ico                            { alias /usr/share/nginx/secretia/logo.svg; access_log off; }
+    location = /static/favicon.png                     { alias /usr/share/nginx/secretia/logo.svg; access_log off; }
+    location = /static/favicon-96x96.png               { alias /usr/share/nginx/secretia/logo.svg; access_log off; }
+    location = /static/favicon.svg                     { alias /usr/share/nginx/secretia/logo.svg; access_log off; }
+    location = /static/favicon.ico                     { alias /usr/share/nginx/secretia/logo.svg; access_log off; }
+    location = /static/apple-touch-icon.png            { alias /usr/share/nginx/secretia/logo.svg; access_log off; }
+    location = /static/splash.png                      { alias /usr/share/nginx/secretia/logo.svg; access_log off; }
+    location = /static/splash-dark.png                 { alias /usr/share/nginx/secretia/logo.svg; access_log off; }
+    location = /static/web-app-manifest-192x192.png    { alias /usr/share/nginx/secretia/logo.svg; access_log off; }
+    location = /static/web-app-manifest-512x512.png    { alias /usr/share/nginx/secretia/logo.svg; access_log off; }
+
     # ── Página de Modelos (servicio Node interno; descarga modelos de Ollama) ──
     # El servicio `models` es OPCIONAL. Usamos el resolver interno de Docker +
     # un upstream por variable para que nginx NO falle al arrancar si `models`
