@@ -57,6 +57,54 @@
 
 ---
 
+## Deploy SIN Compose — 3 servicios separados (recomendado en EasyPanel)
+
+EasyPanel se lleva mejor con servicios sueltos que con un Compose. Creá un
+**proyecto** (p.ej. `secretia`) y dentro **3 servicios**:
+
+### 1) `ollama` — motor de modelos (interno)
+- **App → desde imagen:** `ollama/ollama:latest`
+- **Volumen:** monto `/root/.ollama` (para que los modelos sobrevivan reinicios).
+- **Sin dominio** (queda interno). Necesita salida a internet para `ollama pull`.
+
+### 2) `open-webui` — front (interno)
+- **App → desde imagen:** `ghcr.io/open-webui/open-webui:main`
+- **Volumen:** monto `/app/backend/data`.
+- **Variables de entorno:**
+  ```
+  OLLAMA_BASE_URL=http://ollama:11434
+  WEBUI_NAME=Secretia
+  WEBUI_URL=https://TU-DOMINIO
+  WEBUI_SECRET_KEY=<openssl rand -hex 32>
+  ENABLE_SIGNUP=false
+  # Federación con Lockatus (ver sección siguiente)
+  ENABLE_OAUTH_SIGNUP=true
+  OAUTH_PROVIDER_NAME=Lockatus
+  OAUTH_CLIENT_ID=secretia
+  OAUTH_CLIENT_SECRET=<el de Lockatus>
+  OPENID_PROVIDER_URL=https://lockatus.go.websiteonline.org/.well-known/openid-configuration
+  OPENID_REDIRECT_URI=https://TU-DOMINIO/oauth/oidc/callback
+  ```
+- **Sin dominio** (lo expone el servicio de branding).
+
+### 3) `secretia` — branding (público)
+- **App → Source = este repo de GitHub** (`diegoparras/secretia`), **Build = Dockerfile**.
+  (Construye una `nginx` que proxya a Open WebUI e inyecta el CSS de acento.)
+- **Variable de entorno:** `OPEN_WEBUI_UPSTREAM=open-webui:8080`
+  (apunta al servicio del paso 2; si el hostname interno difiere, usá el que
+  muestre EasyPanel).
+- **Dominio:** asigná tu dominio público → puerto **`8080`**.
+
+> Los hostnames internos (`ollama`, `open-webui`) funcionan si nombrás los
+> servicios así dentro del MISMO proyecto. Si EasyPanel usa otro hostname interno,
+> ajustá `OLLAMA_BASE_URL` y `OPEN_WEBUI_UPSTREAM` con el que figure en cada servicio.
+
+**¿Querés lo más simple posible?** Salteá el servicio 3 y ponéle el dominio
+directo a `open-webui` (puerto 8080). Perdés el acento CSS, pero te queda el
+nombre "Secretia" y la federación. El acento Escriba lo da el servicio de branding.
+
+---
+
 ## Federar con Lockatus
 
 Open WebUI trae OIDC nativo. Para que el login pase por Lockatus:

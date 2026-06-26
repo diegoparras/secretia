@@ -1,34 +1,44 @@
 # Secretia — capa pública de branding sobre Open WebUI.
-# Proxy a open-webui + inyección del CSS de marca + servir assets estáticos.
+# Proxy a Open WebUI + inyección del CSS de marca + assets estáticos.
+#
+# La imagen oficial de nginx procesa esta plantilla con envsubst al arrancar,
+# reemplazando SOLO ${OPEN_WEBUI_UPSTREAM} (por NGINX_ENVSUBST_FILTER).
+# Las demás $variables son de nginx y quedan intactas.
 
-# Mapa para el header Connection de websockets (chat en tiempo real).
+# Header Connection para websockets (chat en tiempo real).
 map $http_upgrade $connection_upgrade {
     default upgrade;
     ''      close;
+}
+
+# Conserva el https que termina el ingress de EasyPanel/Traefik; si no viene,
+# usa el esquema local. Open WebUI lo necesita para armar bien los redirects OIDC.
+map $http_x_forwarded_proto $secretia_proto {
+    default $http_x_forwarded_proto;
+    ''      $scheme;
 }
 
 server {
     listen 8080;
     server_name _;
 
-    # Subir un poco el límite por si se suben imágenes/archivos al chat.
     client_max_body_size 100m;
 
-    # ── Assets estáticos de Secretia (CSS, logo, fuente) ──────────────────
+    # Assets estáticos de Secretia (CSS, logo, favicon, fuente).
     location /secretia/ {
         alias /usr/share/nginx/secretia/;
         access_log off;
         expires 7d;
     }
 
-    # ── Todo lo demás: proxy a Open WebUI ─────────────────────────────────
+    # Todo lo demás: proxy a Open WebUI.
     location / {
-        proxy_pass http://open-webui:8080;
+        proxy_pass http://${OPEN_WEBUI_UPSTREAM};
         proxy_http_version 1.1;
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $secretia_proto;
 
         # Websockets
         proxy_set_header Upgrade    $http_upgrade;
@@ -36,12 +46,10 @@ server {
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
 
-        # sub_filter NO funciona sobre respuestas comprimidas:
-        # pedimos el HTML sin gzip al upstream.
+        # sub_filter no funciona sobre gzip → pedimos el HTML sin comprimir.
         proxy_set_header Accept-Encoding "";
 
-        # Inyecta el CSS de Secretia justo antes de cerrar el <head>.
-        # (best-effort: si Open WebUI cambia su HTML, revisar este filtro.)
+        # Inyecta el CSS de Secretia antes de cerrar el <head>.
         sub_filter '</head>' '<link rel="stylesheet" href="/secretia/secretia.css"></head>';
         sub_filter_once  on;
         sub_filter_types text/html;
