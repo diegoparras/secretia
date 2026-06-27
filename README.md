@@ -135,22 +135,37 @@ Open WebUI trae OIDC nativo. Para que el login pase por Lockatus:
    - `redirect_uri` = `https://secretia.go.websiteonline.org/oauth/oidc/callback`
      (la MISMA que pongas en `OPENID_REDIRECT_URI`).
    - Agregá `secretia` a la **matriz de accesos** para los roles que correspondan.
-2. **Completá en `.env`:**
+2. **Asigná un rol** a tu usuario en la columna `secretia` de la matriz de Lockatus
+   (sin rol asignado → `access_denied`).
+3. **Completá las variables en el servicio `open-webui`** (NO en el de branding):
    ```
-   OAUTH_CLIENT_ID=secretia
-   OAUTH_CLIENT_SECRET=<el secret que registres en Lockatus>
-   OPENID_PROVIDER_URL=https://lockatus.go.websiteonline.org/.well-known/openid-configuration
-   OPENID_REDIRECT_URI=https://secretia.go.websiteonline.org/oauth/oidc/callback
    ENABLE_OAUTH_SIGNUP=true
    ENABLE_SIGNUP=false
+   OAUTH_PROVIDER_NAME=Lockatus
+   OAUTH_CLIENT_ID=secretia
+   OAUTH_CLIENT_SECRET=<cualquier valor no vacío>   # Lockatus lo ignora (cliente público)
+   OPENID_PROVIDER_URL=https://lockatus.go.websiteonline.org/.well-known/openid-configuration
+   OPENID_REDIRECT_URI=https://secretia.go.websiteonline.org/oauth/oidc/callback
+   OAUTH_SCOPES=openid email profile
+   OAUTH_MERGE_ACCOUNTS_BY_EMAIL=true
+   OAUTH_CODE_CHALLENGE_METHOD=S256       # ← OBLIGATORIO: Lockatus exige PKCE
    ```
-3. **Re-deploy.** En el login de Secretia aparecerá **"Continuar con Lockatus"**.
+4. **Re-deploy.** En el login de Secretia aparece **"Continuar con Lockatus"**.
+5. (Opcional) Para mostrar **solo** ese botón y ocultar el login local por email/clave:
+   `ENABLE_LOGIN_FORM=false` — hacelo **recién** cuando confirmes que el SSO entra.
 
-> **Nota técnica.** Lockatus es cliente **público (PKCE)**, igual que Arcanum.
-> Open WebUI usa el flujo confidencial (manda `client_secret`). Registralo igual
-> que Arcanum: si tu Lockatus exige secret, poné el mismo valor en ambos lados;
-> si lo ignora, cualquier valor no vacío sirve. El primer usuario que entre por
-> OIDC podés promoverlo a admin desde Open WebUI (Settings → Users).
+> **Gotchas reales (esto nos costó — leelos):**
+> - **`OAUTH_CODE_CHALLENGE_METHOD=S256` es obligatorio**: Lockatus exige PKCE; sin esto el
+>   login falla (`access_denied` en `/authorize` o `invalid_grant` en `/token`).
+> - Necesitás **Lockatus ≥ v0.1.3**: versiones previas solo leían el `client_id` del body y
+>   daban `invalid_grant` con clientes confidenciales (authlib/Open WebUI lo manda por **HTTP
+>   Basic auth**). v0.1.3 lo acepta de ambos lados.
+> - El `redirect_uri` debe ser **idéntico** carácter por carácter en `OPENID_REDIRECT_URI` y en
+>   la app de Lockatus, y es `…/oauth/oidc/callback` (la ruta de Open WebUI).
+> - Si tu email de Lockatus ya existe como **cuenta local** de Open WebUI →
+>   `OAUTH_MERGE_ACCOUNTS_BY_EMAIL=true` (si no, "email or password incorrect", engañoso).
+> - El `OAUTH_CLIENT_SECRET` puede ser **cualquier valor no vacío** (Lockatus es público + PKCE;
+>   la prueba de posesión es el `code_verifier`, no el secret).
 
 ---
 

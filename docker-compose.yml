@@ -50,6 +50,8 @@ services:
       - OPENID_REDIRECT_URI=${OPENID_REDIRECT_URI:-}
       - OAUTH_SCOPES=${OAUTH_SCOPES:-openid email profile}
       - OAUTH_MERGE_ACCOUNTS_BY_EMAIL=${OAUTH_MERGE_ACCOUNTS_BY_EMAIL:-true}
+      - OAUTH_CODE_CHALLENGE_METHOD=${OAUTH_CODE_CHALLENGE_METHOD:-S256}   # Lockatus EXIGE PKCE
+      - ENABLE_LOGIN_FORM=${ENABLE_LOGIN_FORM:-true}                       # false = solo botón Lockatus
     volumes:
       - open-webui:/app/backend/data
 
