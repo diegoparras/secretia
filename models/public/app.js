@@ -7,6 +7,8 @@ const fmtBytes = (b) => !b ? "0" : b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : (b 
 
 let ME = null, DATA = null, FILTER = "all";
 
+const PENCIL = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
+
 // ---------- arranque ----------
 async function boot() {
   ME = await (await fetch("api/me")).json().catch(() => null);
@@ -19,7 +21,7 @@ async function boot() {
   el("app").classList.remove("hidden");
   el("menu-user").textContent = `${ME.user.name} · rol ${ME.user.role}`;
   el("ollama-down").classList.toggle("hidden", ME.ollamaOk !== false);
-  if (ME.user.role === "dios") el("pull-any").classList.remove("hidden");
+  if (ME.user.role === "dios") { el("pull-any").classList.remove("hidden"); el("add-model").classList.remove("hidden"); }
   await loadModels();
 }
 
@@ -62,12 +64,24 @@ function renderFilters() {
 }
 
 function renderGrid() {
-  const list = [...DATA.models, ...(DATA.extra || [])].filter((m) => FILTER === "all" ? true : m.cat === FILTER);
+  const models = DATA.models.map((m) => ({ ...m, _incat: true }));
+  const extra = (DATA.extra || []).map((m) => ({ ...m, _incat: false }));
+  const list = [...models, ...extra].filter((m) => FILTER === "all" ? true : m.cat === FILTER);
   const dios = DATA.role === "dios";
   el("grid").innerHTML = list.map((m) => card(m, dios)).join("");
   // cablear botones
   el("grid").querySelectorAll("[data-pull]").forEach((b) => b.addEventListener("click", () => pull(b.dataset.pull, b.closest(".model-card"))));
   el("grid").querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => del(b.dataset.del)));
+  el("grid").querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => openEditor(findModel(b.dataset.edit))));
+  el("grid").querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => openEditor(findModel(b.dataset.add))));
+}
+
+function findModel(tag) {
+  const inCat = DATA.models.find((m) => m.tag === tag);
+  if (inCat) return { ...inCat, __inCatalog: true };
+  const ex = (DATA.extra || []).find((m) => m.tag === tag);
+  if (ex) return { ...ex, __inCatalog: false };
+  return null;
 }
 
 function card(m, dios) {
@@ -77,8 +91,13 @@ function card(m, dios) {
     : `<span class="st no"><span class="dot"></span>No instalado</span>`;
   let actions = "";
   if (dios) {
-    if (m.installed) actions = `<button class="ghost mini" data-del="${esc(m.tag)}">Borrar</button>`;
-    else actions = `<button class="mini" data-pull="${esc(m.tag)}">Descargar</button>`;
+    const cat = m._incat
+      ? `<button class="ghost mini mc-edit" data-edit="${esc(m.tag)}" title="Editar card" aria-label="Editar">${PENCIL}</button>`
+      : `<button class="ghost mini" data-add="${esc(m.tag)}" title="Agregar al catálogo">+ Catálogo</button>`;
+    const op = m.installed
+      ? `<button class="ghost mini" data-del="${esc(m.tag)}">Borrar</button>`
+      : `<button class="mini" data-pull="${esc(m.tag)}">Descargar</button>`;
+    actions = cat + op;
   }
   return `<div class="model-card" data-tag="${esc(m.tag)}">
     <div class="mc-top">
@@ -153,6 +172,68 @@ el("pa-btn").addEventListener("click", async () => {
   finally { el("pa-btn").disabled = false; }
 });
 
+// ---------- editor de catálogo (solo dios) ----------
+// model === null → alta en blanco. model con __inCatalog=true → edición.
+// model con __inCatalog=false → promover un instalado (tag fijo, sin borrar).
+function openEditor(model) {
+  const cats = DATA?.cats || [];
+  const editing = !!(model && model.__inCatalog);
+  const fromExisting = !!model;
+  el("ed-cat").innerHTML = cats.map((c) => `<option value="${esc(c.id)}">${esc(c.label)}</option>`).join("");
+  el("ed-tit").textContent = editing ? "Editar modelo" : (fromExisting ? "Agregar al catálogo" : "Agregar modelo");
+  el("ed-tag").value = model?.tag || "";
+  el("ed-tag").readOnly = fromExisting;   // el tag es la clave: fijo si viene de algo existente
+  el("ed-nombre").value = (model?.nombre && model.nombre !== model?.tag) ? model.nombre : "";
+  el("ed-params").value = (model?.params && model.params !== "—") ? model.params : "";
+  el("ed-size").value = model?.sizeGB != null ? model.sizeGB : "";
+  el("ed-cat").value = (model?.cat && model.cat !== "otros") ? model.cat : (cats[0]?.id || "");
+  el("ed-blurb").value = (model?.blurb && model.blurb !== "Instalado en tu Ollama.") ? model.blurb : "";
+  el("ed-err").textContent = "";
+  el("ed-del").classList.toggle("hidden", !editing);
+  el("editor").classList.remove("hidden");
+  (fromExisting ? el("ed-nombre") : el("ed-tag")).focus();
+}
+const closeEditor = () => el("editor").classList.add("hidden");
+
+el("add-model").addEventListener("click", () => openEditor(null));
+el("ed-x").addEventListener("click", closeEditor);
+el("ed-cancel").addEventListener("click", closeEditor);
+el("editor").addEventListener("click", (e) => { if (e.target === el("editor")) closeEditor(); });
+
+el("ed-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  el("ed-err").textContent = "";
+  const payload = {
+    tag: el("ed-tag").value.trim(),
+    nombre: el("ed-nombre").value.trim(),
+    params: el("ed-params").value.trim(),
+    sizeGB: el("ed-size").value.trim(),
+    cat: el("ed-cat").value,
+    blurb: el("ed-blurb").value.trim(),
+  };
+  if (!payload.tag) { el("ed-err").textContent = "Falta el tag."; return; }
+  el("ed-save").disabled = true;
+  try {
+    const r = await fetch("api/catalog", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { el("ed-err").textContent = j.error || "No se pudo guardar."; return; }
+    closeEditor(); loadModels();
+  } catch { el("ed-err").textContent = "Fallo de red."; }
+  finally { el("ed-save").disabled = false; }
+});
+
+el("ed-del").addEventListener("click", async () => {
+  const tag = el("ed-tag").value.trim();
+  if (!confirm(`¿Quitar "${tag}" del catálogo?\nNo borra el modelo de Ollama, solo la card.`)) return;
+  el("ed-err").textContent = "";
+  try {
+    const r = await fetch("api/catalog/delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tag }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { el("ed-err").textContent = j.error || "No se pudo quitar."; return; }
+    closeEditor(); loadModels();
+  } catch { el("ed-err").textContent = "Fallo de red."; }
+});
+
 // ---------- chrome: menú, tema, modal, logout ----------
 el("kebab").addEventListener("click", (e) => { e.stopPropagation(); const m = el("menu"); const open = m.classList.toggle("hidden"); el("kebab").setAttribute("aria-expanded", String(!open)); });
 document.addEventListener("click", (e) => { if (!el("menu").classList.contains("hidden") && !e.target.closest(".menu-wrap")) el("menu").classList.add("hidden"); });
@@ -168,7 +249,7 @@ themeSw.addEventListener("change", () => {
 el("about-open").addEventListener("click", () => { el("about").classList.remove("hidden"); el("menu").classList.add("hidden"); });
 el("about-x").addEventListener("click", () => el("about").classList.add("hidden"));
 el("about").addEventListener("click", (e) => { if (e.target === el("about")) el("about").classList.add("hidden"); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") el("about").classList.add("hidden"); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { el("about").classList.add("hidden"); el("editor").classList.add("hidden"); } });
 
 el("logout").addEventListener("click", async () => {
   await fetch("api/logout", { method: "POST", headers: { "Content-Type": "application/json" } });

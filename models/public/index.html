@@ -82,7 +82,10 @@
 
     <div id="ollama-down" class="note-bad hidden">No se puede contactar a Ollama. Revisá que el servicio esté arriba y <code>OLLAMA_BASE_URL</code>.</div>
 
-    <div class="filters" id="filters"></div>
+    <div class="list-head">
+      <div class="filters" id="filters"></div>
+      <button class="ghost mini hidden" id="add-model">+ Agregar modelo</button>
+    </div>
 
     <div class="cat-grid" id="grid"></div>
 
@@ -111,6 +114,42 @@
         </dl>
         <p class="about-foot">Diego Parras · Ecosistema Escriba</p>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== Editor de catálogo (solo dios) ===== -->
+  <div class="modal-back hidden" id="editor">
+    <div class="modal-card">
+      <button class="modal-x" id="ed-x" aria-label="Cerrar">✕</button>
+      <h3 class="modal-tit" id="ed-tit">Agregar modelo</h3>
+      <form id="ed-form" class="ed-form" autocomplete="off">
+        <label>Tag de Ollama
+          <input id="ed-tag" placeholder="ej. phi4:14b" spellcheck="false" required />
+        </label>
+        <div class="ed-grid">
+          <label>Nombre
+            <input id="ed-nombre" placeholder="ej. Phi 4" />
+          </label>
+          <label>Categoría
+            <select id="ed-cat"></select>
+          </label>
+          <label>Parámetros
+            <input id="ed-params" placeholder="ej. 14B" />
+          </label>
+          <label>Tamaño (GB)
+            <input id="ed-size" type="number" step="0.1" min="0" placeholder="ej. 9.1" />
+          </label>
+        </div>
+        <label>Descripción
+          <textarea id="ed-blurb" rows="2" maxlength="240" placeholder="Una línea sobre el modelo."></textarea>
+        </label>
+        <div class="ed-err" id="ed-err"></div>
+        <div class="modal-acciones">
+          <button type="button" class="ghost hidden" id="ed-del" style="margin-right:auto">Quitar del catálogo</button>
+          <button type="button" class="ghost" id="ed-cancel">Cancelar</button>
+          <button type="submit" id="ed-save">Guardar</button>
+        </div>
+      </form>
     </div>
   </div>
 

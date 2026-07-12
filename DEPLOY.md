@@ -121,6 +121,11 @@ roles **dios** (descarga/borra) y **humano** (solo mira).
 | Source | **GitHub** → `diegoparras/secretia`, **build context `models/`** |
 | Build | **Dockerfile** |
 | Dominio | **ninguno** (lo expone `secretia` en `/modelos`) |
+| Mount (volume) | contenedor: **`/data`** (catálogo editable persistido) |
+
+> **Puerto:** el server escucha en **8090** (`ENV PORT=8090`). Si EasyPanel te
+> inyecta otro puerto, agregá `PORT=8090` al Environment, **o** ajustá
+> `MODELS_UPSTREAM` del servicio `secretia` al puerto real. Tienen que coincidir.
 
 **Environment** (acceso local por contraseña):
 ```
@@ -141,10 +146,18 @@ MODELS_LOCKATUS_CLIENT_ID=secretia-modelos
 
 Checklist:
 - [ ] Servicio nombrado **`models`**, build context `models/`.
+- [ ] **Volumen montado en `/data`** (si no, el catálogo editable es efímero y se
+      pierde al reiniciar; el server avisa en el log).
 - [ ] `MODELS_SESSION_SECRET` largo y secreto.
 - [ ] O bien `DIOS_PASSWORD`/`HUMANO_PASSWORD`, **o bien** los `MODELS_LOCKATUS_*`.
 - [ ] El servicio `secretia` (paso 3) tiene `MODELS_UPSTREAM=models:8090`.
 - [ ] Probá `https://TU-DOMINIO/modelos`.
+
+**Catálogo editable:** el rol **dios** agrega/edita/quita cards desde la propia
+página (botón *Agregar modelo* y el lápiz de cada card), sin redeploy. Se guarda
+en `/data/catalog.json`. La primera vez se siembra con el catálogo curado de
+fábrica (`models/catalog.mjs`). "Quitar del catálogo" saca la card pero **no**
+borra el modelo de Ollama.
 
 ---
 

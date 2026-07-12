@@ -20,6 +20,8 @@ export const CATALOG = [
     blurb: "El modelo abierto de Google." },
   { tag: "qwen2.5:14b",        nombre: "Qwen 2.5 14B",        params: "14B",  sizeGB: 9.0, cat: "chat",
     blurb: "Más grande y más preciso. Pedile RAM/VRAM." },
+  { tag: "phi4:14b",           nombre: "Phi 4",               params: "14B",  sizeGB: 9.1, cat: "chat",
+    blurb: "El grande de Microsoft. Muy fuerte en razonamiento para su tamaño." },
   // --- Razonamiento ---
   { tag: "deepseek-r1:7b",     nombre: "DeepSeek-R1 7B",      params: "7B",   sizeGB: 4.7, cat: "reasoning",
     blurb: "Razonamiento paso a paso (estilo o1)." },

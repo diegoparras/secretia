@@ -63,12 +63,16 @@ services:
     restart: unless-stopped
     depends_on:
       - ollama
+    volumes:
+      # Catálogo editable persistido (el rol dios agrega/edita cards desde la web).
+      - models-data:/data
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
       - MODELS_SESSION_SECRET=${MODELS_SESSION_SECRET}
       - DIOS_PASSWORD=${DIOS_PASSWORD:-}
       - HUMANO_PASSWORD=${HUMANO_PASSWORD:-}
       - COOKIE_SECURE=${COOKIE_SECURE:-true}
+      - MODELS_CATALOG_PATH=${MODELS_CATALOG_PATH:-/data/catalog.json}
       # Federación opcional con Lockatus (si está, oculta el login local)
       - LOCKATUS_ISSUER=${MODELS_LOCKATUS_ISSUER:-}
       - LOCKATUS_CLIENT_ID=${MODELS_LOCKATUS_CLIENT_ID:-secretia-modelos}
@@ -95,3 +99,4 @@ services:
 volumes:
   ollama:
   open-webui:
+  models-data:

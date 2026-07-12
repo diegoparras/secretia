@@ -10,7 +10,10 @@ import { createHmac, timingSafeEqual, randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join, normalize } from "node:path";
 import { createLockatusClient } from "./lockatus-client.mjs";
-import { CATALOG, CATS } from "./catalog.mjs";
+import { CATS } from "./catalog.mjs";
+import { initStore, listCatalog, upsertEntry, removeEntry, normalizeEntry } from "./store.mjs";
+
+const CAT_IDS = CATS.map((c) => c.id);
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const PUB = join(__dir, "public");
@@ -169,7 +172,7 @@ const server = http.createServer(async (req, res) => {
     if (tags === null) return sendJSON(res, 502, { error: "No se puede contactar a Ollama." });
     const byName = new Map(tags.map((m) => [m.name, m]));
     const inCatalog = new Set();
-    const models = CATALOG.map((m) => {
+    const models = listCatalog().map((m) => {
       const hit = byName.get(m.tag) || byName.get(m.tag + ":latest");
       if (hit) inCatalog.add(hit.name);
       return { ...m, installed: !!hit, installedSize: hit ? hit.size : null };
@@ -209,10 +212,36 @@ const server = http.createServer(async (req, res) => {
     } catch { return sendJSON(res, 502, { error: "Fallo de red con Ollama" }); }
   }
 
+  // ----- Catálogo: alta/edición de una card (SOLO dios) -----
+  if (path === "/api/catalog" && req.method === "POST") {
+    if (!user) return sendJSON(res, 401, { error: "no autenticado" });
+    if (user.role !== "dios") return sendJSON(res, 403, { error: "Solo el rol dios puede editar el catálogo." });
+    if (!sameOrigin(req)) return sendJSON(res, 403, { error: "origen inválido" });
+    let entry;
+    try { entry = normalizeEntry(JSON.parse((await readBody(req)) || "{}"), CAT_IDS); }
+    catch (e) { return sendJSON(res, 400, { error: e.message || "datos inválidos" }); }
+    try { await upsertEntry(entry); return sendJSON(res, 200, { ok: true, entry }); }
+    catch (e) { return sendJSON(res, 500, { error: "No se pudo guardar el catálogo (¿volumen en /data?): " + e.message }); }
+  }
+
+  // ----- Catálogo: quitar una card (SOLO dios) — NO borra el modelo de Ollama -----
+  if (path === "/api/catalog/delete" && req.method === "POST") {
+    if (!user) return sendJSON(res, 401, { error: "no autenticado" });
+    if (user.role !== "dios") return sendJSON(res, 403, { error: "Solo el rol dios puede editar el catálogo." });
+    if (!sameOrigin(req)) return sendJSON(res, 403, { error: "origen inválido" });
+    const body = JSON.parse((await readBody(req)) || "{}");
+    const tag = String(body.tag || "").trim();
+    if (!tag) return sendJSON(res, 400, { error: "falta el tag" });
+    try { const ok = await removeEntry(tag); return sendJSON(res, 200, { ok }); }
+    catch (e) { return sendJSON(res, 500, { error: "No se pudo actualizar el catálogo: " + e.message }); }
+  }
+
   // ----- Estáticos / SPA -----
   if (req.method === "GET") return serveStatic(req, res, path);
   res.writeHead(405, { "Content-Type": "text/plain" }); res.end("method not allowed");
 });
+
+await initStore();
 
 server.listen(PORT, () => {
   console.log(`[modelos] Secretia · Modelos en :${PORT} — Ollama=${OLLAMA} — ${FEDERATED ? "federado con Lockatus" : "login local"}${(!FEDERATED && !DIOS && !HUMANO) ? " (OJO: sin DIOS_PASSWORD/HUMANO_PASSWORD, nadie puede entrar)" : ""}`);
